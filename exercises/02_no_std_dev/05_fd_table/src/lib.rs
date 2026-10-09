@@ -51,13 +51,14 @@ pub struct FdTable {
     // TODO: Design the internal structure
     // Hint: use Vec<Option<Arc<dyn File>>>
     //       the index is the fd number, None means the fd is closed or unallocated
+    table: Vec<Option<Arc<dyn File>>>,
 }
 
 impl FdTable {
     /// Create an empty fd table
     pub fn new() -> Self {
         // TODO
-        todo!()
+        FdTable { table: Vec::new() }
     }
 
     /// Allocate a new fd, return the fd number.
@@ -65,25 +66,40 @@ impl FdTable {
     /// Prefers reusing the smallest closed fd number; if no free slot, appends to the end.
     pub fn alloc(&mut self, file: Arc<dyn File>) -> usize {
         // TODO
-        todo!()
+        for (fd, slot) in self.table.iter_mut().enumerate() {
+            if slot.is_none() {
+                *slot = Some(file);
+                return fd;
+            }
+        }
+        self.table.push(Some(file));
+        self.table.len() - 1
     }
 
     /// Get the file object for an fd. Returns None if the fd doesn't exist or is closed.
     pub fn get(&self, fd: usize) -> Option<Arc<dyn File>> {
         // TODO
-        todo!()
+        // 应该 clone 出去一份，使用 flatten 压扁多余 Option 层
+        self.table.get(fd).cloned().flatten()
     }
 
     /// Close an fd. Returns true on success, false if the fd doesn't exist or is already closed.
     pub fn close(&mut self, fd: usize) -> bool {
         // TODO
-        todo!()
+        self.table
+            .get_mut(fd)
+            // map 映射掉里面可能存在的 slot，然后将 slot take 置 None，检查 fd 对应文件是否存在
+            .map(|slot| slot.take().is_some())
+            // 对外层 Option 拆封
+            .unwrap_or(false)
     }
 
     /// Return the number of currently allocated fds (excluding closed ones)
     pub fn count(&self) -> usize {
         // TODO
-        todo!()
+        self.table.iter().filter(|slot| slot.is_some()).count()
+        // trick
+        // self.table.iter().flatten().count()
     }
 }
 
